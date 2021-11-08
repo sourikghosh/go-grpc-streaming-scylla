@@ -20,61 +20,62 @@ type fileInfo struct {
 	Size     int64
 }
 
-func Exec(roots []string, fileNames chan<- string) {
+func RetriveFilesTOUpload(roots []string, n *sync.WaitGroup, fileNames chan<- string) {
+	limitReached := make(chan struct{})
+
 	if len(roots) == 0 {
 		roots = []string{"."}
 	}
 
 	// Traverse each root of the file tree in parallel.
 	discoveredFiles := make(chan fileInfo)
-	// // Files to upload in parallel.
-	// fileNames := make(chan string)
 
-	var n sync.WaitGroup
 	for _, root := range roots {
 		n.Add(1)
-		go traverseDir(root, &n, discoveredFiles)
+		go traverseDir(root, n, discoveredFiles, limitReached)
 	}
-
-	go func() {
-		n.Wait()
-		close(discoveredFiles)
-	}()
 
 	var nbytes int64
 	for fInfo := range discoveredFiles {
-		fmt.Println("finfo reading from discoveredFiles: ", fInfo.Filename)
 		nbytes += fInfo.Size
-		fmt.Println("before if")
-		// validation check for Max Upload Size.
-		if float64(nbytes) >= config.MaxUploadFileSize {
-			config.ZapLogger.Warn("Max upload size limit reached ...")
-			close(fileNames)
 
-			break
+		// validation check for Max Upload Size.
+		checkVal := float64(nbytes)
+		fmt.Printf("size reached %.1fmb\n", checkVal/1e6)
+
+		if checkVal >= config.MaxUploadFileSize {
+			config.ZapLogger.Warn("Max upload size limit reached ...")
+
+			close(fileNames)
+			limitReached <- struct{}{}
+
+			return
 		}
 
-		fmt.Println("after If")
 		fileNames <- fInfo.Filename
-		fmt.Println("next iter of for")
 	}
 }
 
 // walkDir recursively walks the file tree rooted at dir
 // and sends the size of each found file on fileSizes.
-func traverseDir(dir string, n *sync.WaitGroup, discoveredFiles chan<- fileInfo) {
+func traverseDir(dir string, n *sync.WaitGroup, discoveredFiles chan<- fileInfo, quit <-chan struct{}) {
 	defer n.Done()
 	for _, entry := range dirEnts(dir) {
-		if entry.IsDir() {
-			n.Add(1)
-			subdir := filepath.Join(dir, entry.Name())
-			go traverseDir(subdir, n, discoveredFiles)
-		} else {
-			fmt.Println("adding entry from traverseDir", entry.Name())
+		select {
+		case <-quit:
+			close(discoveredFiles)
+			return
 
-			discoveredFiles <- fileInfo{
-				dir + "/" + entry.Name(),
-				entry.Size(),
+		default:
+			subdir := filepath.Join(dir, entry.Name())
+			if entry.IsDir() {
+				n.Add(1)
+				go traverseDir(subdir, n, discoveredFiles, quit)
+			} else {
+				discoveredFiles <- fileInfo{
+					subdir,
+					entry.Size(),
+				}
 			}
 		}
 	}
@@ -90,7 +91,7 @@ func dirEnts(dir string) []os.FileInfo {
 
 	entries, err := ioutil.ReadDir(dir)
 	if err != nil {
-		config.ZapLogger.Error("failed to read dir", zap.Error(err))
+		config.ZapLogger.Error("failed to read", zap.String("dir", dir), zap.Error(err))
 		return nil
 	}
 
