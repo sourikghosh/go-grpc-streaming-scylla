@@ -11,7 +11,7 @@ message UploadRequest {
   }
   
  message FileInfo {
-    string dir = 1;
+    string fileName = 1;
     string type = 2;
   }
   
