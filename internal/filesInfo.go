@@ -21,7 +21,7 @@ type fileInfo struct {
 }
 
 func RetriveFilesTOUpload(roots []string, n *sync.WaitGroup, fileNames chan<- string) {
-	limitReached := make(chan struct{})
+	limitReached := make(chan struct{}, 1)
 
 	if len(roots) == 0 {
 		roots = []string{"."}
@@ -35,6 +35,12 @@ func RetriveFilesTOUpload(roots []string, n *sync.WaitGroup, fileNames chan<- st
 		go traverseDir(root, n, discoveredFiles, limitReached)
 	}
 
+	go func() {
+		n.Wait()
+		close(discoveredFiles)
+		close(fileNames)
+	}()
+
 	var nbytes int64
 	for fInfo := range discoveredFiles {
 		nbytes += fInfo.Size
@@ -47,7 +53,9 @@ func RetriveFilesTOUpload(roots []string, n *sync.WaitGroup, fileNames chan<- st
 			config.ZapLogger.Warn("Max upload size limit reached ...")
 
 			close(fileNames)
+
 			limitReached <- struct{}{}
+			<-discoveredFiles
 
 			return
 		}
@@ -59,7 +67,10 @@ func RetriveFilesTOUpload(roots []string, n *sync.WaitGroup, fileNames chan<- st
 // walkDir recursively walks the file tree rooted at dir
 // and sends the size of each found file on fileSizes.
 func traverseDir(dir string, n *sync.WaitGroup, discoveredFiles chan<- fileInfo, quit <-chan struct{}) {
-	defer n.Done()
+	defer func() {
+		n.Done()
+	}()
+
 	for _, entry := range dirEnts(dir) {
 		select {
 		case <-quit:

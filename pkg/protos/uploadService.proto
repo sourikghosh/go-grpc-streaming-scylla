@@ -18,4 +18,8 @@ message UploadRequest {
   message UploadResponse {
     string id = 1;
     uint32 total_size = 2;
-  }
+    }
+
+  service UploadService{
+    rpc UploadFile(stream UploadRequest) returns (UploadResponse) {};
+   }

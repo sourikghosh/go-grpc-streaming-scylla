@@ -29,7 +29,11 @@ func main() {
 		fmt.Println("recived all filenames in main: ", fN)
 	}
 
+	fmt.Println("waiting on completing the go routine")
+
 	n.Wait()
+
+	fmt.Println("all goroutine sleep")
 
 	fmt.Println(runtime.NumGoroutine())
 	panic("dump stack here:")
