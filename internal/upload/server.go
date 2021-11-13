@@ -2,6 +2,7 @@ package upload
 
 import (
 	"apex/internal/pb"
+	"apex/pkg/config"
 	"bytes"
 	"context"
 	"fmt"
@@ -82,7 +83,7 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 		return s.logError(status.Errorf(codes.Unknown, "cannot send response: %v", err))
 	}
 
-	fileSizeMB := fmt.Sprintf("%.1fMB", float64(fileSize)/1e6)
+	fileSizeMB := fmt.Sprintf("%.1fMB", float64(fileSize)/config.MiB1)
 	s.log.Info("saved file ", zap.String("file_id", fileID), zap.String("file_Size", fileSizeMB))
 	return nil
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"apex/internal/pb"
 	"apex/internal/upload"
 	"fmt"
 	"log"
@@ -22,6 +21,6 @@ func main() {
 		log.Fatal("cannot dial server: ", err)
 	}
 
-	uploadClient := pb.NewUploadServiceClient(conn)
-	upload.UploadClient(uploadClient, "tmp/game.png")
+	client := upload.NewUploadClient(conn, logger)
+	client.UploadClient("tmp/game.png")
 }

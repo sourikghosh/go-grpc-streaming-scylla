@@ -2,42 +2,61 @@ package upload
 
 import (
 	"apex/internal/pb"
+	"apex/pkg/config"
 	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
-func UploadClient(uploadClient pb.UploadServiceClient, filePath string) {
+// Client is a client to call upload service RPCs
+type client struct {
+	service pb.UploadServiceClient
+	log     *zap.Logger
+}
+
+func NewUploadClient(cc *grpc.ClientConn, logger *zap.Logger) *client {
+	return &client{
+		service: pb.NewUploadServiceClient(cc),
+		log:     logger,
+	}
+}
+
+func (c *client) UploadClient(filePath string) {
 	fileInfo, err := os.Lstat(filePath)
 	if err != nil {
-		log.Fatal("cannot get file info", err)
+		c.log.Fatal("cannot get file info", zap.Error(err))
 	}
 
 	if fileInfo.IsDir() {
-		log.Fatal("expected file : found dir")
+		c.log.Fatal("expected file : found dir")
 	}
 
-	if float64(fileInfo.Size()) > 5e6 {
-		log.Fatalf("size reached %.1fmb\n", float64(fileInfo.Size())/1e6)
+	if float64(fileInfo.Size()) > config.MaxUploadFileSize {
+		c.log.Fatal("size reached",
+			zap.String("size",
+				fmt.Sprintf("%.1fMB",
+					float64(fileInfo.Size())/config.MiB1)))
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Fatal("cannot open file file: ", err)
+		c.log.Fatal("cannot open file", zap.Error(err))
 	}
 	defer file.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	stream, err := uploadClient.UploadFile(ctx)
+	stream, err := c.service.UploadFile(ctx)
 	if err != nil {
-		log.Fatal("cannot upload file: ", err)
+		c.log.Fatal("cannot upload file", zap.Error(err))
 	}
 
 	req := &pb.UploadRequest{
@@ -51,7 +70,7 @@ func UploadClient(uploadClient pb.UploadServiceClient, filePath string) {
 
 	err = stream.Send(req)
 	if err != nil {
-		log.Fatal("cannot send file info to server: ", err, stream.RecvMsg(nil))
+		c.log.Fatal("cannot send file info to server", zap.Errors("errors", []error{err, stream.RecvMsg(nil)}))
 	}
 
 	reader := bufio.NewReader(file)
@@ -63,7 +82,7 @@ func UploadClient(uploadClient pb.UploadServiceClient, filePath string) {
 			break
 		}
 		if err != nil {
-			log.Fatal("cannot read chunk to buffer: ", err)
+			c.log.Fatal("cannot read chunk to buffer", zap.Error(err))
 		}
 
 		req := &pb.UploadRequest{
@@ -74,15 +93,15 @@ func UploadClient(uploadClient pb.UploadServiceClient, filePath string) {
 
 		err = stream.Send(req)
 		if err != nil {
-			log.Fatal("cannot send chunk to server: ", err, stream.RecvMsg(nil))
+			c.log.Fatal("cannot send chunk to server", zap.Errors("errors", []error{err, stream.RecvMsg(nil)}))
 		}
 	}
 
 	res, err := stream.CloseAndRecv()
 	if err != nil {
-		log.Fatal("cannot receive response: ", err)
+		c.log.Fatal("cannot receive response", zap.Error(err))
 	}
 
-	fileSizeMB := fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/1e6)
-	log.Printf("file uploaded with id: %s, size: %s", res.GetId(), fileSizeMB)
+	fileSizeMB := fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/config.MiB1)
+	c.log.Info("file uploaded", zap.String("id", res.GetId()), zap.String("size", fileSizeMB))
 }
