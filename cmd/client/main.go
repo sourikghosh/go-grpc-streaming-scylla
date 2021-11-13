@@ -22,5 +22,5 @@ func main() {
 	}
 
 	client := upload.NewUploadClient(conn, logger)
-	client.UploadClient("tmp/game.png")
+	client.UploadClient("tmp/song.mp3")
 }
