@@ -2,6 +2,7 @@ package main
 
 import (
 	"apex/internal/upload"
+	"flag"
 	"fmt"
 	"log"
 
@@ -10,13 +11,16 @@ import (
 )
 
 func main() {
+	serverAddress := flag.String("address", "", "the server address")
+	flag.Parse()
+
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Printf("✋🏾 logger init failed %v", err.Error())
 	}
 
 	defer logger.Sync()
-	conn, err := grpc.Dial("0.0.0.0:1500", grpc.WithInsecure())
+	conn, err := grpc.Dial(*serverAddress, grpc.WithInsecure())
 	if err != nil {
 		log.Fatal("cannot dial server: ", err)
 	}
