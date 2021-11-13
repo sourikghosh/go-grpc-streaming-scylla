@@ -1,4 +1,7 @@
-clean:
+clean-files:
+	rm -rf files/*
+
+clean-pb:
 	rm -rf internal/pb
 
 gen:
@@ -11,4 +14,4 @@ server:
 client:
 	go run cmd/client/main.go
 
-.PHONY: clean gen server client
+.PHONY: clean-pb gen server client

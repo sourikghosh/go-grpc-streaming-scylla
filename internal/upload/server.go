@@ -4,6 +4,7 @@ import (
 	"apex/internal/pb"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"go.uber.org/zap"
@@ -59,7 +60,7 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 		size := len(chunk)
 
 		s.log.Info("received a chunk", zap.Int("size", size))
-
+		fileSize += size
 		_, err = fileData.Write(chunk)
 		if err != nil {
 			return s.logError(status.Errorf(codes.Internal, "cannot write chunk data: %v", err))
@@ -81,7 +82,8 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 		return s.logError(status.Errorf(codes.Unknown, "cannot send response: %v", err))
 	}
 
-	s.log.Info("saved file ", zap.String("file_id", fileID), zap.Int("file_Size", fileSize))
+	fileSizeMB := fmt.Sprintf("%.1fMB", float64(fileSize)/1e6)
+	s.log.Info("saved file ", zap.String("file_id", fileID), zap.String("file_Size", fileSizeMB))
 	return nil
 }
 

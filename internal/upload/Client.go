@@ -4,6 +4,7 @@ import (
 	"apex/internal/pb"
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -82,5 +83,6 @@ func UploadClient(uploadClient pb.UploadServiceClient, filePath string) {
 		log.Fatal("cannot receive response: ", err)
 	}
 
-	log.Printf("file uploaded with id: %s, size: %d", res.GetId(), res.GetTotalSize())
+	fileSizeMB := fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/1e6)
+	log.Printf("file uploaded with id: %s, size: %s", res.GetId(), fileSizeMB)
 }
