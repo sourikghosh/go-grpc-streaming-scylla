@@ -12,10 +12,10 @@ import (
 // FileStore is an interface to store upload files
 type FileStore interface {
 	// Save saves a new file to the store
-	Save(imageType string, imageData bytes.Buffer) (string, error)
+	Save(fileType string, fileData bytes.Buffer) (string, error)
 }
 
-// DiskFileStore stores image on disk, and its info on memory
+// DiskFileStore stores file on disk, and its info on memory
 type DiskFileStore struct {
 	mutex      sync.RWMutex
 	fileFolder string
@@ -28,43 +28,43 @@ type FileInfo struct {
 	Path string
 }
 
-// NewDiskFileStore returns a new DiskImageStore
-func NewDiskFileStore(imageFolder string) *DiskFileStore {
+// NewDiskFileStore returns a new DiskFileStore
+func NewDiskFileStore(fileFolder string) *DiskFileStore {
 	return &DiskFileStore{
-		fileFolder: imageFolder,
+		fileFolder: fileFolder,
 		file:       make(map[string]*FileInfo),
 	}
 }
 
 // Save adds a new file in store (inmmemory)
 func (store *DiskFileStore) Save(
-	imageType string,
-	imageData bytes.Buffer,
+	fileType string,
+	fileData bytes.Buffer,
 ) (string, error) {
-	imageID, err := uuid.NewRandom()
+	fileID, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("cannot generate image id: %w", err)
+		return "", fmt.Errorf("cannot generate file id: %w", err)
 	}
 
-	imagePath := fmt.Sprintf("%s/%s%s", store.fileFolder, imageID, imageType)
+	filePath := fmt.Sprintf("%s/%s%s", store.fileFolder, fileID, fileType)
 
-	file, err := os.Create(imagePath)
+	file, err := os.Create(filePath)
 	if err != nil {
-		return "", fmt.Errorf("cannot create image file: %w", err)
+		return "", fmt.Errorf("cannot create file: %w", err)
 	}
 
-	_, err = imageData.WriteTo(file)
+	_, err = fileData.WriteTo(file)
 	if err != nil {
-		return "", fmt.Errorf("cannot write image to file: %w", err)
+		return "", fmt.Errorf("cannot write : %w", err)
 	}
 
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.file[imageID.String()] = &FileInfo{
-		Type: imageType,
-		Path: imagePath,
+	store.file[fileID.String()] = &FileInfo{
+		Type: fileType,
+		Path: filePath,
 	}
 
-	return imageID.String(), nil
+	return fileID.String(), nil
 }

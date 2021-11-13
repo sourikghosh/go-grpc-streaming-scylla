@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UploadServer is the server that provides upload services
+// Server is the server that provides upload services
 type server struct {
 	pb.UnimplementedUploadServiceServer
 	repo FileStore
@@ -35,8 +35,8 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 	fileType := req.GetInfo().GetType()
 	s.log.Info("receive an uploadFile request", zap.String("file_name", uploadFileName), zap.String("type", fileType))
 
-	imageData := bytes.Buffer{}
-	imageSize := 0
+	fileData := bytes.Buffer{}
+	fileSize := 0
 
 	for {
 		err := s.contextError(stream.Context())
@@ -60,20 +60,20 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 
 		s.log.Info("received a chunk", zap.Int("size", size))
 
-		_, err = imageData.Write(chunk)
+		_, err = fileData.Write(chunk)
 		if err != nil {
 			return s.logError(status.Errorf(codes.Internal, "cannot write chunk data: %v", err))
 		}
 	}
 
-	imageID, err := s.repo.Save(fileType, imageData)
+	fileID, err := s.repo.Save(fileType, fileData)
 	if err != nil {
-		return s.logError(status.Errorf(codes.Internal, "cannot save image to the store: %v", err))
+		return s.logError(status.Errorf(codes.Internal, "cannot save file to the store: %v", err))
 	}
 
 	res := &pb.UploadResponse{
-		Id:        imageID,
-		TotalSize: uint32(imageSize),
+		Id:        fileID,
+		TotalSize: uint32(fileSize),
 	}
 
 	err = stream.SendAndClose(res)
@@ -81,7 +81,7 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 		return s.logError(status.Errorf(codes.Unknown, "cannot send response: %v", err))
 	}
 
-	s.log.Info("saved image ", zap.String("file_id", imageID), zap.Int("file_Size", imageSize))
+	s.log.Info("saved file ", zap.String("file_id", fileID), zap.Int("file_Size", fileSize))
 	return nil
 }
 
