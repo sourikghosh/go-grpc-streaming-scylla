@@ -12,6 +12,6 @@ server:
 	go run cmd/server/main.go -port 8080
 
 client:
-	go run -race cmd/client/main.go -address 0.0.0.0:8080 -dir /home/sourik/go/src/personalProjects/go-grpc-streaming-scylla/tmp
+	go run -race cmd/client/main.go -address 0.0.0.0:8080 -w 6 -dir /home/sourik/go/src/personalProjects/go-grpc-streaming-scylla/tmp
 
 .PHONY: clean-pb gen server client

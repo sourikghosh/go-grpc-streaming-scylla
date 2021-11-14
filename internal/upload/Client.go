@@ -44,13 +44,11 @@ func NewUploadClient(ctx context.Context, cc *grpc.ClientConn, logger *zap.Logge
 		FailRequest: make(chan string),
 	}
 
-	// concurrency can be modified here by changing the check for i
-	for i := 0; i < 6; i++ {
+	// concurrency can be modified by setting `MaxWorkerCount`
+	for i := 0; i < config.MaxWorkerCount; i++ {
 		uploadCli.wg.Add(1)
 		go uploadCli.worker(i + 1)
 	}
-
-	// progressBar Config
 
 	return uploadCli
 }

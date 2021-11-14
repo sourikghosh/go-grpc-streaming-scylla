@@ -2,6 +2,7 @@ package main
 
 import (
 	"apex/internal/upload"
+	"apex/pkg/config"
 	"context"
 	"flag"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 func main() {
 	dirName := flag.String("dir", ".", "Absolute Path to search for file/s to upload")
+	maxWorkerCount := flag.Int("w", 6, "no of concurrent worker count to upload files")
 	serverAddress := flag.String("address", "", "the server address")
 	flag.Parse()
 
@@ -22,8 +24,9 @@ func main() {
 	if err != nil {
 		fmt.Printf("✋🏾 logger init failed %v", err.Error())
 	}
-
 	defer logger.Sync()
+
+	config.MaxWorkerCount = *maxWorkerCount
 	conn, err := grpc.Dial(*serverAddress, grpc.WithInsecure())
 	if err != nil {
 		logger.Fatal("cannot dial server: ", zap.Error(err))

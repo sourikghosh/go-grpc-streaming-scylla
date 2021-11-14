@@ -6,3 +6,7 @@ const (
 	MiB1              float64 = 1e6
 	MaxUploadFileSize float64 = MiB5
 )
+
+var (
+	MaxWorkerCount int
+)
