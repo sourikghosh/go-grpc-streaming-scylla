@@ -1,2 +1,2 @@
-*.png
-*.mp3
+tmp/*
+files/*
