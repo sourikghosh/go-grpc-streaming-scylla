@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k0kubun/go-ansi"
-	bar "github.com/schollz/progressbar/v3"
+	bar "github.com/cheggaaa/pb/v3"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -24,12 +23,17 @@ type client struct {
 	dir string
 	// uploadService has the upload RPCs
 	service pb.UploadServiceClient
-	log     *zap.Logger
-	ctx     context.Context
-	wg      sync.WaitGroup
+	// client side logger
+	log *zap.Logger
+	ctx context.Context
+	// pBar is progressbar for uploading
+	// pBar *bar.ProgressBar
+	wg sync.WaitGroup
 	// each request is a filepath on client accessible to client
-	requests    chan string
+	requests chan string
+	// each successfull request is communicated through this channel
 	DoneRequest chan string
+	// each failed request is communicated through this channel
 	FailRequest chan string
 }
 
@@ -63,12 +67,16 @@ func (c *client) Do(filepath string) {
 }
 
 func (c *client) worker(workerID int) {
-	defer func() {
-		c.wg.Done()
-	}()
+	defer c.wg.Done()
 
 	for request := range c.requests {
-		fileInfo, err := os.Lstat(request)
+		file, err := os.Open(request)
+		if err != nil {
+			c.log.Fatal("failed to open file", zap.String("file", request), zap.Error(err))
+		}
+		defer file.Close()
+
+		fileInfo, err := file.Stat()
 		if err != nil {
 			c.log.Fatal("cannot get file info", zap.Error(err))
 		}
@@ -79,12 +87,6 @@ func (c *client) worker(workerID int) {
 					fmt.Sprintf("%.1fMB",
 						float64(fileInfo.Size())/config.MiB1)))
 		}
-
-		file, err := os.Open(request)
-		if err != nil {
-			c.log.Fatal("failed to open file", zap.String("file", request), zap.Error(err))
-		}
-		defer file.Close()
 
 		//start uploading ...
 		stream, err := c.service.UploadFile(c.ctx)
@@ -107,21 +109,15 @@ func (c *client) worker(workerID int) {
 		}
 
 		//start progress bar
-		progressBar := bar.NewOptions(int(fileInfo.Size()),
-			bar.OptionSetWriter(ansi.NewAnsiStdout()),
-			bar.OptionEnableColorCodes(true),
-			bar.OptionShowBytes(true),
-			bar.OptionSetWidth(15),
-			bar.OptionSetDescription("[cyan]uploading[reset] "+fmt.Sprint(workerID)+" ..."),
-			bar.OptionSetTheme(bar.Theme{
-				Saucer:        "[green]=[reset]",
-				SaucerHead:    "[green]>[reset]",
-				SaucerPadding: " ",
-				BarStart:      "[",
-				BarEnd:        "]",
-			}),
-		)
+		pBar := bar.Start64(fileInfo.Size())
+		pBar.SetRefreshRate(500 * time.Millisecond)
+		pBar.Set(bar.Bytes, true)
+		pBar.Set(bar.SIBytesPrefix, true)
+		pBar.SetRefreshRate(500 * time.Millisecond)
 
+		tmpl := `{{ yellow "uploading:"}} {{string . "fileName"}} {{string . "size" }} {{ bar . "[" (green "=") (cycle . "↖" "↗" "↘" "↙" ) "." "]"}} {{speed . | rndcolor }} {{string . "my_blue_string" | blue}}`
+		pBar.SetTemplateString(tmpl)
+		pBar.Set("fileName", fileInfo.Name()[:12])
 		//create a buffer of chunkSize to be streamed
 		reader := bufio.NewReader(file)
 		buffer := make([]byte, 1024)
@@ -144,21 +140,25 @@ func (c *client) worker(workerID int) {
 
 			err = stream.Send(req)
 			if err != nil {
-				// bar.FinishPrint("failed to send chunk via stream file : " + request)
 				c.log.Error("cannot send chunk to server", zap.Errors("errors", []error{err, stream.RecvMsg(nil)}))
+				pBar.Finish()
 				break
 			}
 
-			if err = progressBar.Add64(int64(n)); err != nil {
-				c.log.Error("err occurred progressbar", zap.Error(err))
-			}
+			pBar.Add(n)
+			pBar.Set("size",
+				fmt.Sprintf("%.02f/%.02f MB",
+					float64(pBar.Current())/config.MiB1,
+					float64(pBar.Total())/config.MiB1),
+			)
+
 		}
 
 		res, err := stream.CloseAndRecv()
 		if err != nil {
 			c.log.Error("cannot receive response", zap.Error(err))
 
-			progressBar.Finish()
+			pBar.Finish()
 			c.FailRequest <- request
 
 			return
@@ -167,7 +167,7 @@ func (c *client) worker(workerID int) {
 		c.log.Info("writing for done", zap.String("file", request), zap.Int("workerID", workerID))
 
 		c.DoneRequest <- request + " id:" + res.GetId() + " size:" + fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/config.MiB1)
-		progressBar.Finish()
+		pBar.Finish()
 	}
 }
 
