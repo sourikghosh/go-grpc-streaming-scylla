@@ -26,17 +26,17 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "apex",
-	Short: "multi-upload file/s concurrently to scyllaDB",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Apex allows to multi-upload file/s concurrently to scyllaDB",
+	Long: `Apex searchs all file/s in the input directory to concurrently upload them to scyllaDB.
+It was a project to get familiarize with gRPC streams and scyllaDB.Apex takes two config --flag. For example:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) {
-	// },
+If the gRPC server is not running on localhost:8080 you can change it with
+	apex --addr localhost:8080
+
+You can change the concurrency with 
+	apex --workerCount 6
+Higher workerCount means higher concurrency
+The default value is 6.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
