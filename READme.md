@@ -9,7 +9,7 @@
 - `cd go-grpc-streaming-scylla`
 - `go mod downlaod`
 - `make server`
-- `go build -o apex cmd/client/main.go`
+- `make client`
 
 
 ## Usage
