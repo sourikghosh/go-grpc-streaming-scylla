@@ -11,6 +11,6 @@ server:
 	go run cmd/server/main.go -port 8080
 
 client:
-	go run -race cmd/client/main.go -address 0.0.0.0:8080 -w 6 -dir /home/sourik/go/src/personalProjects/go-grpc-streaming-scylla/tmp
+	go install cmd/client/apex.go
 
 .PHONY: clean-pb gen server client
