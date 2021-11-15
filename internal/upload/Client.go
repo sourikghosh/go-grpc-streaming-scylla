@@ -164,7 +164,7 @@ func (c *client) worker(workerID int) {
 			return
 		}
 
-		c.log.Info("writing for done", zap.String("file", request), zap.Int("workerID", workerID))
+		// c.log.Info("writing for done", zap.String("file", request), zap.Int("workerID", workerID))
 
 		c.DoneRequest <- request + " id:" + res.GetId() + " size:" + fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/config.MiB1)
 		pBar.Finish()
@@ -240,11 +240,11 @@ func (c *client) UploadClient(filePath string) {
 		}
 	}
 
-	res, err := stream.CloseAndRecv()
-	if err != nil {
-		c.log.Fatal("cannot receive response", zap.Error(err))
+	_, errRev := stream.CloseAndRecv()
+	if errRev != nil {
+		c.log.Fatal("cannot receive response", zap.Error(errRev))
 	}
 
-	fileSizeMB := fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/config.MiB1)
-	c.log.Info("file uploaded", zap.String("id", res.GetId()), zap.String("size", fileSizeMB))
+	// fileSizeMB := fmt.Sprintf("%.1fMB", float64(res.GetTotalSize())/config.MiB1)
+	// c.log.Info("file uploaded", zap.String("id", res.GetId()), zap.String("size", fileSizeMB))
 }

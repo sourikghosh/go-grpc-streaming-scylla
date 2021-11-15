@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -23,6 +24,7 @@ func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Printf("✋🏾 logger init failed %v", err.Error())
+		os.Exit(2)
 	}
 	defer logger.Sync()
 
@@ -33,13 +35,13 @@ func main() {
 	}
 
 	if err = uploadFiles(context.Background(), conn, *dirName, logger); err != nil {
-		logger.Error("error from server", zap.Error(err))
+		logger.Error("", zap.Error(err))
 	}
 }
 
 func uploadFiles(ctx context.Context, cc *grpc.ClientConn, dir string, logger *zap.Logger) error {
 	cli := upload.NewUploadClient(ctx, cc, logger, dir)
-	var errorUploadbulk error
+	var errFailedReqs error
 
 	// reading all the files in the dir
 	files, err := ioutil.ReadDir(dir)
@@ -61,16 +63,14 @@ func uploadFiles(ctx context.Context, cc *grpc.ClientConn, dir string, logger *z
 	for _, file := range files {
 		if !file.IsDir() {
 			select {
-			case msg := <-cli.DoneRequest:
-				logger.Info("file uploaded", zap.String("msg", msg))
+			case <-cli.DoneRequest:
 
 			case req := <-cli.FailRequest:
-				fmt.Println("failed to  send " + req)
-				errorUploadbulk = errors.Wrapf(errorUploadbulk, " Failed to send %s", req)
+				fmt.Println("failed to send " + req)
+				errFailedReqs = errors.Wrapf(errFailedReqs, " Failed to send %s", req)
 			}
 		}
 	}
 
-	fmt.Println("All done ")
-	return errorUploadbulk
+	return errFailedReqs
 }
