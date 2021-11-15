@@ -10,4 +10,5 @@ const (
 
 var (
 	MaxWorkerCount int
+	ServerAddress  string
 )
