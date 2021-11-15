@@ -2,8 +2,7 @@
 
 # APEX
 
-Apex is a multi-upload cli.Using Golang gRPC stream and ScyllaDB. It using golang's concurrency primitives for multi-upload,
-gRPC stream to uplaod chunck-data of blob to server,and stores in ScyllaDB,which is distributed real-time big data Database.
+Apex is a multi-upload cli. Using `Golang, gRPC-stream` and `ScyllaDB`. It is using golang's concurrency primitives for multi-upload, gRPC stream to uplaod chunck-data of blob to server and stores the uploaded files in ScyllaDB, which is a distributed real-time big-data Database.
 
 ## Usage
 
