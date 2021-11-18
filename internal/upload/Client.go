@@ -194,7 +194,7 @@ func (c *client) UploadClient(filePath string) {
 	}
 	defer file.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	stream, err := c.service.UploadFile(ctx)

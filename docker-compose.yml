@@ -1,38 +1,52 @@
 version: "3"
 
 services:
-
   scylla-node1:
-    image: scylladb/scylla:4.4.6
+    image: scylladb/scylla:4.4.0
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M
+      --overprovisioned 1 --api-address 0.0.0.0
     volumes:
       - "./pkg/scylla/scylla.yaml:/etc/scylla/scylla.yaml"
-      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rackdc.properties"
-      - "./pkg/scylla/mutant-data.txt:/mutant-data.txt"
+      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rac\
+        kdc.properties"
+      - "./pkg/scylla/init.txt:/init.txt"
+    ports:
+      - 1801:9042
     networks:
       web:
 
+        null
   scylla-node2:
-    image: scylladb/scylla:4.4.6
+    image: scylladb/scylla:4.4.0
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M
+      --overprovisioned 1 --api-address 0.0.0.0
     volumes:
       - "./pkg/scylla/scylla.yaml:/etc/scylla/scylla.yaml"
-      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rackdc.properties"
+      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rac\
+        kdc.properties"
+    ports:
+      - 1802:9042
     networks:
       web:
 
+        null
   scylla-node3:
-    image: scylladb/scylla:4.4.6
+    image: scylladb/scylla:4.4.0
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M
+      --overprovisioned 1 --api-address 0.0.0.0
     volumes:
       - "./pkg/scylla/scylla.yaml:/etc/scylla/scylla.yaml"
-      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rackdc.properties"
+      - "./pkg/scylla/cassandra-rackdc.properties.dc1:/etc/scylla/cassandra-rac\
+        kdc.properties"
+    ports:
+      - 1803:9042
     networks:
       web:
 
+        null
 networks:
   web:
     driver: bridge

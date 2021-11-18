@@ -1,12 +1,11 @@
-
 CREATE KEYSPACE upload WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy','DC1' : 3};
 
 USE upload;
 
 CREATE TABLE upload_file (
-id  
+id text ,
 file_name text,
-file_data
-PRIMARY KEY((id,file_name)));
-
-INSERT INTO upload_file ("id","file_name","file_data") VALUES (1,'Bob','') ;
+type text,
+size int,
+file_data blob,
+PRIMARY KEY((id,type)));

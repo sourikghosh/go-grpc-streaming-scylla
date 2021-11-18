@@ -8,21 +8,26 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+type Repository interface {
+	InsertFile(f File) error
+}
+
 // Server is the server that provides upload services
 type server struct {
 	pb.UnimplementedUploadServiceServer
-	repo FileStore
+	repo Repository
 	log  *zap.Logger
 }
 
-func NewServer(imgStore FileStore, logger *zap.Logger) *server {
+func NewServer(repo Repository, logger *zap.Logger) *server {
 	return &server{
-		repo: imgStore,
+		repo: repo,
 		log:  logger,
 	}
 }
@@ -30,7 +35,7 @@ func NewServer(imgStore FileStore, logger *zap.Logger) *server {
 func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 	req, err := stream.Recv()
 	if err != nil {
-		return s.logError(status.Errorf(codes.Unknown, "cannot receive file info"))
+		return s.logError(status.Errorf(codes.FailedPrecondition, "cannot receive file info"))
 	}
 
 	uploadFileName := req.GetInfo().GetFileName()
@@ -64,17 +69,31 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 		fileSize += size
 		_, err = fileData.Write(chunk)
 		if err != nil {
-			return s.logError(status.Errorf(codes.Internal, "cannot write chunk data: %v", err))
+			return s.logError(status.Errorf(codes.DataLoss, "cannot write chunk data: %v", err))
 		}
 	}
 
-	fileID, err := s.repo.Save(fileType, fileData)
+	fileID, err := uuid.NewRandom()
 	if err != nil {
-		return s.logError(status.Errorf(codes.Internal, "cannot save file to the store: %v", err))
+		return s.logError(status.Errorf(codes.Internal, "cannot send response: %v", err))
+	}
+
+	fileData.Bytes()
+
+	f := File{
+		ID:        fileID.String(),
+		FileName:  uploadFileName,
+		FileType:  fileType,
+		TotalSize: fileSize,
+		File_data: fileData.Bytes(),
+	}
+
+	if err = s.repo.InsertFile(f); err != nil {
+		return s.logError(status.Errorf(codes.Internal, "cannot send response: %v", err))
 	}
 
 	res := &pb.UploadResponse{
-		Id:        fileID,
+		Id:        fileID.String(),
 		TotalSize: uint32(fileSize),
 	}
 
@@ -84,7 +103,7 @@ func (s *server) UploadFile(stream pb.UploadService_UploadFileServer) error {
 	}
 
 	fileSizeMB := fmt.Sprintf("%.1fMB", float64(fileSize)/config.MiB1)
-	s.log.Info("saved file ", zap.String("file_id", fileID), zap.String("file_Size", fileSizeMB))
+	s.log.Info("saved file ", zap.String("file_id", fileID.String()), zap.String("file_Size", fileSizeMB))
 	return nil
 }
 
