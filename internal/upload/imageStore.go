@@ -1,19 +1,10 @@
 package upload
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"sync"
-
-	"github.com/google/uuid"
 )
-
-// FileStore is an interface to store upload files
-type FileStore interface {
-	// Save saves a new file to the store
-	Save(fileType string, fileData bytes.Buffer) (string, error)
-}
 
 // DiskFileStore stores file on disk, and its info on memory
 type DiskFileStore struct {
@@ -29,7 +20,7 @@ type FileInfo struct {
 }
 
 // NewDiskFileStore returns a new DiskFileStore
-func NewDiskFileStore(fileFolder string) *DiskFileStore {
+func NewDiskFileStore(fileFolder string) Repository {
 	return &DiskFileStore{
 		fileFolder: fileFolder,
 		file:       make(map[string]*FileInfo),
@@ -37,34 +28,26 @@ func NewDiskFileStore(fileFolder string) *DiskFileStore {
 }
 
 // Save adds a new file in store (inmmemory)
-func (store *DiskFileStore) Save(
-	fileType string,
-	fileData bytes.Buffer,
-) (string, error) {
-	fileID, err := uuid.NewRandom()
-	if err != nil {
-		return "", fmt.Errorf("cannot generate file id: %w", err)
-	}
-
-	filePath := fmt.Sprintf("%s/%s%s", store.fileFolder, fileID, fileType)
+func (store *DiskFileStore) InsertFile(f File) error {
+	filePath := fmt.Sprintf("%s/%s%s", store.fileFolder, f.ID, f.FileType)
 
 	file, err := os.Create(filePath)
 	if err != nil {
-		return "", fmt.Errorf("cannot create file: %w", err)
+		return fmt.Errorf("cannot create file: %w", err)
 	}
 
-	_, err = fileData.WriteTo(file)
+	_, err = f.FIle_DataBuffer.WriteTo(file)
 	if err != nil {
-		return "", fmt.Errorf("cannot write : %w", err)
+		return fmt.Errorf("cannot write : %w", err)
 	}
 
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.file[fileID.String()] = &FileInfo{
-		Type: fileType,
+	store.file[f.ID] = &FileInfo{
+		Type: f.FileType,
 		Path: filePath,
 	}
 
-	return fileID.String(), nil
+	return err
 }

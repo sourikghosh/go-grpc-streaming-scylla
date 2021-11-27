@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	Long: `Apex searchs all file/s in the input directory to concurrently upload them to scyllaDB.
 It was a project to get familiarize with gRPC streams and scyllaDB.Apex takes two config --flag. For example:
 
-If the gRPC server is not running on localhost:8080 you can change it with
+If the apex server is not running on localhost:1500 you can change it with
 	apex --addr localhost:8080
 
 You can change the concurrency with 
@@ -49,9 +49,8 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// rootFlags
-	rootCmd.PersistentFlags().StringVarP(&config.ServerAddress, "addr", "a", "localhost:8080", "the server address")
+	rootCmd.PersistentFlags().StringVarP(&config.ServerAddress, "addr", "a", "localhost:1500", "the server address")
 	rootCmd.PersistentFlags().IntVarP(&config.MaxWorkerCount, "workerCount", "w", 6, "no of concurrent worker count to upload files")
-	// rootCmd.MarkPersistentFlagRequired("addr")
 }
 
 func initConfig() {

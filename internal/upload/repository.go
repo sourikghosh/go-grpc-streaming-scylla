@@ -1,21 +1,26 @@
 package upload
 
 import (
+	"bytes"
+
 	"github.com/gocql/gocql"
+	"github.com/scylladb/gocqlx"
 	"github.com/scylladb/gocqlx/qb"
 	"github.com/scylladb/gocqlx/table"
 	"go.uber.org/zap"
 )
 
-type repository struct {
+type scyllaRepo struct {
 	log  *zap.Logger
 	conn *gocql.Session
+	stmt *statements
 }
 
-func NewRepository(logger *zap.Logger, session *gocql.Session) *repository {
-	return &repository{
+func NewScyllaRepository(logger *zap.Logger, session *gocql.Session) Repository {
+	return &scyllaRepo{
 		log:  logger,
 		conn: session,
+		stmt: createStatements(),
 	}
 }
 
@@ -30,25 +35,30 @@ type statements struct {
 	sel query
 }
 
-type Record struct {
-	FirstName       string `db:"first_name"`
-	LastName        string `db:"last_name"`
-	Address         string `db:"address"`
-	PictureLocation string `db:"picture_location"`
+type File struct {
+	ID              string `db:"id"`
+	FileName        string `db:"file_name"`
+	FileType        string `db:"type"`
+	TotalSize       int    `db:"size"`
+	File_data       []byte `db:"file_data"`
+	FIle_DataBuffer bytes.Buffer
+}
+
+func (r *scyllaRepo) InsertFile(f File) error {
+	err := gocqlx.Query(r.conn.Query(r.stmt.ins.stmt), r.stmt.ins.names).BindStruct(f).ExecRelease()
+	return err
 }
 
 func createStatements() *statements {
 	m := table.Metadata{
-		Name:    "mutant_data",
-		Columns: []string{"first_name", "last_name", "address", "picture_location"},
-		PartKey: []string{"first_name", "last_name"},
+		Name:    "upload_file",
+		Columns: []string{"id", "file_name", "type", "size", "file_data"},
+		PartKey: []string{"id", "type"},
 	}
 	tbl := table.New(m)
 
 	deleteStmt, deleteNames := tbl.Delete()
 	insertStmt, insertNames := tbl.Insert()
-	// Normally a select statement such as this would use `tbl.Select()` to select by
-	// primary key but now we just want to display all the records...
 	selectStmt, selectNames := qb.Select(m.Name).Columns(m.Columns...).ToCql()
 	return &statements{
 		del: query{
