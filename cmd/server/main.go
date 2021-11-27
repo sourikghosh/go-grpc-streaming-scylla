@@ -27,6 +27,7 @@ func main() {
 
 	var repo upload.Repository
 
+	// initialize scylla implementation of Repository
 	if *repoImpelementaion == "scylla" {
 		cluster := scylla.CreateCluster(gocql.Quorum, "upload", "localhost:1801", "localhost:1802", "localhost:1803")
 		session, err := gocql.NewSession(*cluster)
@@ -35,12 +36,11 @@ func main() {
 		}
 
 		logger.Info("successfully connected to scylla cluster")
-		// Initialize scylla implementation of Repository
 		repo = upload.NewScyllaRepository(logger, session)
 	}
 
+	// initialize inmem implementation of Repository
 	if repo == nil {
-		// initialize inmem implementation of Repository
 		repo = upload.NewDiskFileStore("files")
 		logger.Info("successfully connected to Disk FileStore")
 	}
